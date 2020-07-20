@@ -36,7 +36,7 @@ namespace ProAgil.Repository.Migrations
                     b.Property<string>("Local")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("QtdPessoas")
+                    b.Property<int>("qtdPessoas")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Telefone")

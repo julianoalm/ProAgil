@@ -64,7 +64,7 @@ namespace ProAgil.API.Controllers
                 {
                     Local = evento.Local,
                     DataEvento = evento.DataEvento,
-                    QtdPessoas = evento.QtdPessoas,
+                    qtdPessoas = evento.qtdPessoas,
                     Tema = evento.Tema,
                     Lotes = evento.Lotes
                 };

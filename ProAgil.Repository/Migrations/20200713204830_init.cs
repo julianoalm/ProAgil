@@ -16,7 +16,7 @@ namespace ProAgil.Repository.Migrations
                     Local = table.Column<string>(nullable: true),
                     DataEvento = table.Column<DateTime>(nullable: false),
                     Tema = table.Column<string>(nullable: true),
-                    QtdPessoas = table.Column<int>(nullable: false),
+                    qtdPessoas = table.Column<int>(nullable: false),
                     ImagemURL = table.Column<string>(nullable: true),
                     Telefone = table.Column<string>(nullable: true),
                     Email = table.Column<string>(nullable: true)
