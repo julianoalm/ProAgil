@@ -1,11 +1,14 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProAgil.API.Dtos;
 using ProAgil.Domain;
 using ProAgil.Repository;
 
@@ -16,8 +19,10 @@ namespace ProAgil.API.Controllers
     public class EventoController : ControllerBase
     {
         public readonly IProAgilRepository _repo;
-        public EventoController(IProAgilRepository repo)
+        public IMapper _mapper { get; set; }
+        public EventoController(IProAgilRepository repo, IMapper mapper)
         {
+            this._mapper = mapper;
             _repo = repo;
         }
 
@@ -26,12 +31,14 @@ namespace ProAgil.API.Controllers
         {
             try
             {
-                var results = await _repo.GetAllEventoAsync(true);
+                var eventos = await _repo.GetAllEventoAsync(true);
+                var results = _mapper.Map<EventoDto[]>(eventos); //Como eventos é uma lista, é preciso converter para Array.
+
                 return Ok(results);
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
+                return this.StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar Eventos: { ex.Message }");
             }
         }
 
@@ -40,19 +47,20 @@ namespace ProAgil.API.Controllers
         {
             try
             {
-                var returns = await _repo.GetEventoAsyncById(EventoId, true); 
+                var evento = await _repo.GetEventoAsyncById(EventoId, true);
+                var results = _mapper.Map<EventoDto>(evento); 
 
-                if (returns == null)
+                if (results == null)
                 {
                     return NotFound();
                 }
 
-                return Ok(returns);   
+                return Ok(results);
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
-            }            
+                return this.StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar Eventos: { ex.Message }");
+            }
         }
 
         [HttpGet("getByTema/{tema}")]
@@ -60,31 +68,33 @@ namespace ProAgil.API.Controllers
         {
             try
             {
-                var returns = await _repo.GetAllEventoAsyncByTema(tema, true); 
+                var eventos = await _repo.GetAllEventoAsyncByTema(tema, true);
+                var results = _mapper.Map<EventoDto[]>(eventos);
 
-                if (returns == null)
+                if (results == null)
                 {
                     return NotFound();
                 }
 
-                return Ok(returns);   
+                return Ok(results);
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
-            }            
+                return this.StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar Eventos: { ex.Message }");
+            }
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(Evento evento)
+        public async Task<IActionResult> Post(EventoDto eventoDto)
         {
             try
             {
+                var evento = _mapper.Map<Evento>(eventoDto);
                 _repo.Add(evento);
 
                 if (await _repo.SaveChangesAsync())
                 {
-                    return Created($"/api/evento/{evento.Id}", evento);
+                    return Created($"/api/evento/{eventoDto.Id}", _mapper.Map<EventoDto>(evento));
                 }
             }
             catch (System.Exception ex)
@@ -92,24 +102,26 @@ namespace ProAgil.API.Controllers
                 return BadRequest(ex.Message);
             }
 
-            return BadRequest();            
+            return BadRequest();
         }
 
         [HttpPut("{EventoId}")]
-        public async Task<IActionResult> Put(int EventoId, Evento evento)
+        public async Task<IActionResult> Put(int EventoId, EventoDto eventoDto)
         {
             try
             {
-                var evt = await _repo.GetEventoAsyncById(EventoId, false);
+                var evento = await _repo.GetEventoAsyncById(EventoId, false);
 
-                if (evt == null)
+                if (evento == null)
                     return NotFound();
+
+                _mapper.Map(eventoDto, evento); //Atualiza o evento com o Mapper para atualização no banco.   
 
                 _repo.Update(evento);
 
                 if (await _repo.SaveChangesAsync())
                 {
-                    return Created($"/api/evento/{evento.Id}", evento);
+                    return Created($"/api/evento/{evento.Id}", _mapper.Map<EventoDto>(evento));
                 }
             }
             catch (System.Exception ex)
@@ -117,7 +129,7 @@ namespace ProAgil.API.Controllers
                 return BadRequest(ex.Message);
             }
 
-            return BadRequest();         
+            return BadRequest();
         }
 
         [HttpDelete("{EventoId}")]
@@ -142,7 +154,7 @@ namespace ProAgil.API.Controllers
                 return BadRequest(ex.Message);
             }
 
-            return BadRequest();       
+            return BadRequest();
         }
     }
 }

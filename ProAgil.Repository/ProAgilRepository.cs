@@ -16,6 +16,7 @@ namespace ProAgil.Repository
         }
 
         //GERAIS
+        #region GERAIS
         public void Add<T>(T entity) where T : class
         {
             _context.Add(entity);
@@ -36,7 +37,10 @@ namespace ProAgil.Repository
             return (await _context.SaveChangesAsync()) > 0;
         }
 
+        #endregion
+
         //EVENTO
+        #region EVENTO
         public async Task<Evento[]> GetAllEventoAsync(bool includePalestrantes = false)
         {
             IQueryable<Evento> query = _context.Eventos
@@ -50,7 +54,7 @@ namespace ProAgil.Repository
             }
 
             query = query.AsNoTracking()
-                         .OrderByDescending(c => c.DataEvento);
+                         .OrderBy(c => c.Id);
 
             return await query.ToArrayAsync();
         }
@@ -87,13 +91,16 @@ namespace ProAgil.Repository
             }
 
             query = query.AsNoTracking()
-                         .OrderByDescending(c => c.DataEvento)
+                         .OrderBy(c => c.Id)
                          .Where(c => c.Id == EventoId);
 
             return await query.FirstOrDefaultAsync();
         }
 
+        #endregion
+
         //PALESTRANTE
+        #region PALESTRANTE
         public async Task<Palestrante> GetAllPalestrantesAsync(int PalestranteId, bool includeEventos = false)
         {
             IQueryable<Palestrante> query = _context.Palestrantes            
@@ -128,5 +135,7 @@ namespace ProAgil.Repository
 
             return await query.ToArrayAsync();
         }
+        
+        #endregion    
     }
 }
