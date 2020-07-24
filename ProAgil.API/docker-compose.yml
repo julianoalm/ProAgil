@@ -1,0 +1,23 @@
+version: "3"
+
+volumes:
+      proagildb:
+      
+networks:
+       frontend:
+
+services:
+
+      proagil:
+        build:
+         context: .
+         dockerfile: Dockerfile
+         
+        networks :         
+         - frontend
+        
+        volumes:
+          - proagildb:/app
+          
+        ports:
+         - 5000:80

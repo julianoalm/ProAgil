@@ -1,4 +1,4 @@
-
+<app-titulo [titulo]="titulo"></app-titulo>
 <div class="d-flex">
   <div class="form-inline mr-auto">
     <div class="form-group mb-2">
@@ -62,6 +62,7 @@
           <button class="btn btn-sm btn-success" tooltip="editar" (click)="editarEvento(evento, template)">
             <i class="fa fa-edit"></i>
           </button>
+
           <button class="btn btn-sm btn-danger" tooltip="excluir" (click)="excluirEvento(evento, confirm)">
             <i class="fa fa-eraser"></i>
           </button>
@@ -183,8 +184,8 @@ role="dialog" aria-labelledby="dialog-sizes-name1">
         Salvar Alterações
       </button>
     </div>
-    <p>Form Value: {{registerForm.value | json}}</p>
-    <p>Form Status: {{registerForm.status | json}}</p>
+    <!-- <p>Form Value: {{registerForm.value | json}}</p>
+    <p>Form Status: {{registerForm.status | json}}</p> -->
   </div>
 </div>
 </div>
