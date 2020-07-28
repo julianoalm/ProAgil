@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
@@ -40,6 +42,42 @@ namespace ProAgil.API.Controllers
             {
                 return this.StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar Eventos: { ex.Message }");
             }
+        }
+
+        [HttpPost("upload")]
+        public IActionResult upload()
+        {
+            try
+            {
+                //Pega o arquivo enviado
+                var file = Request.Form.Files[0];
+                //Pega o diretório onde o arquivo será salvo
+                var folderName = Path.Combine("Resources","Images");
+                //Concatena o diretório da aplicação (API) com a pasta onde o arquivo será salvo
+                var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
+
+                if (file.Length > 0)
+                {
+                    //Recuperar o FileName (nome do arquivo) que está sendo feito o upload
+                    var filename = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName;
+                    //Remove \ e espaços do nome completo do arquivo
+                    var fullPath = Path.Combine(pathToSave, filename.Replace("\"", " ").Trim());
+
+                    using(var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        //Salva o arquivo na pasta
+                        file.CopyTo(stream);
+                    }
+                }
+
+                return Ok();
+            }
+            catch (System.Exception ex)
+            {
+                return this.StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar Eventos: { ex.Message }");
+            }
+
+            // return BadRequest("Erro ao tentar realizar upload");
         }
 
         [HttpGet("{EventoId}")]
