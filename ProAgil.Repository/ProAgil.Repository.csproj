@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\ProAgil.Domain\ProAgil.Domain.csproj"/>
   </ItemGroup>
@@ -11,8 +9,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="3.1.5"/>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.5"/>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.1.5"/>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="3.1.5"/>
   </ItemGroup>
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-  </PropertyGroup>
 </Project>

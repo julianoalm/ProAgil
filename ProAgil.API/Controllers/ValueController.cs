@@ -55,72 +55,22 @@ namespace ProAgil.API.Controllers
             }            
         }
 
+                // POST api/values
         [HttpPost]
-        public async Task<IActionResult> Post(Evento evento)
+        public void Post([FromBody] string value)
         {
-            try
-            {
-                var evt = new Evento
-                {
-                    Local = evento.Local,
-                    DataEvento = evento.DataEvento,
-                    qtdPessoas = evento.qtdPessoas,
-                    Tema = evento.Tema,
-                    Lotes = evento.Lotes
-                };
-
-                Context.Add(evt);
-                await Context.SaveChangesAsync();
-                
-                return CreatedAtAction("Get", new { id = evt.Id }, evt);
-            }
-            catch (System.Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }            
         }
 
-        [HttpPut]
-        public async Task<IActionResult> Put(int id, Evento evento)
+        // PUT api/values/5
+        [HttpPut("{id}")]
+        public void Put(int id, [FromBody] string value)
         {
-            try
-            {
-                if (id != evento.Id)
-                {
-                    return BadRequest();
-                }
-
-                Context.Entry(evento).State = EntityState.Modified;
-
-                await Context.SaveChangesAsync();
-            
-                return NoContent();    
-            }
-            catch (System.Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }             
         }
 
-        [HttpDelete]
-        public async Task<IActionResult> Delete(Evento evento)
+        // DELETE api/values/5
+        [HttpDelete("{id}")]
+        public void Delete(int id)
         {
-            try
-            {
-                var evt = await Context.Eventos.FindAsync(evento.Id);
-                if (evt == null)
-                {
-                    return NotFound();
-                }
-
-                Context.Eventos.Remove(evento);
-                await Context.SaveChangesAsync();
-                return Ok(evt);
-            }
-            catch (System.Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }             
         }
     }
 }

@@ -25,7 +25,7 @@ namespace ProAgil.API.Controllers
         public EventoController(IProAgilRepository repo, IMapper mapper)
         {
             this._mapper = mapper;
-            _repo = repo;
+            this._repo = repo;
         }
 
         [HttpGet]
