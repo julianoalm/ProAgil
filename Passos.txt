@@ -1,0 +1,563 @@
+Passos
+
+-- Criação dos projetos
+dotnet new webapi -n ProAgil.API
+
+dotnet add package Microsoft.EntityFrameworkCore
+dotnet add package Microsoft.EntityFrameworkCoreMicrosoft.EntityFrameworkCore.Sqllite
+
+- Cria a Solution
+dotnet new sln
+dotnet sln add PaymentContext.Domain/PaymentContext.Domain.csproj   -- Adiciona o projeto à solução
+dotnet restore  -- Restaura todos os pacotes dos nossos projetos
+dotnet build 	-- Compila a solução
+
+- Criar um Model para Evento, com as propriedades que vão ser os campos da tabela Evento
+namespace ProAgil.API.Model
+{
+    public class Evento
+    {
+        public int EventoId { get; set; }
+        public string Local { get; set; }
+        public string  DataEvento { get; set; }
+        public string Tema { get; set; }
+        public int QtdPessoas { get; set; }
+        public string  Lote { get; set; }
+    }
+}
+
+- Criar um DataContext com o DBSet para Evento
+namespace ProAgil.API.Data
+{
+    public class DataContext : DbContext
+    {
+        public DataContext(DbContextOptions<DataContext> options) : base (options)
+        {
+            
+        }
+        
+        public DbSet<Evento> Eventos { get; set; }
+    }
+}
+
+- Criar a Controller Evento, já injetando no Construtor um DataContext e try catch com StatusCode
+o decorator [ApiController] indica para a controller que ele está passando os parmetros de post e put via Body, caso não tenha esse decorator, você deve indicar na passagem do parametro o decorator [FromBody]
+namespace ProAgil.API.Controllers
+{
+    [ApiController]
+    [Route("[controller]")]
+    public class EventoController : ControllerBase
+    {
+        public DataContext Context { get; }
+        public EventoController(DataContext context)
+        {
+            this.Context = context;
+        }
+
+        [HttpGet]
+        public IActionResult Get()
+        {
+            try
+            {
+                var results = Context.Eventos.ToList();
+                return Ok(results);
+            }
+            catch (System.Exception)
+            {
+                return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
+            }
+        }
+
+        [HttpGet("{id}")]
+        public IActionResult Get(int id)
+        {
+            try
+            {
+                var returns = Context.Eventos.ToList().FirstOrDefault(x => x.EventoId == id);
+                return Ok(returns);   
+            }
+            catch (System.Exception)
+            {
+                return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
+            }            
+        }
+    }
+}
+
+- Colocar no método ConfigureServices da classe Startup um AddDBContext
+public void ConfigureServices(IServiceCollection services)
+{
+	services.AddDbContext<DataContext>(x => x.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
+	services.AddControllers();
+}
+
+- Criar o banco com o Migration
+dotnet ef migrations add init
+dotnet ef database update
+
+- Transformar o método Get em Assincrono. A cada vez que o Controller for chamado ele irá criará uma instancia, que já é comum mesmo sem o assincrono, porém o diferencial é que a cada chamada do Get uma nova thread é aberta e assim não trava o recurso.
+ [HttpGet]
+public async Task<IActionResult> Get()
+{
+	try
+	{
+		var results = await Context.Eventos.ToListAsync();
+		return Ok(results);
+	}
+	catch (System.Exception)
+	{
+		return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
+	}
+}
+
+[HttpGet("{id}")]
+public async Task<IActionResult> Get(int id)
+{
+	try
+	{
+		var returns = await Context.Eventos.FirstOrDefaultAsync(x => x.EventoId == id);
+		return Ok(returns);   
+	}
+	catch (System.Exception)
+	{
+		return this.StatusCode(StatusCodes.Status500InternalServerError, "Erro ao buscar Eventos.");
+	}            
+}
+
+- Colocar algumas validações no Model com DataAnnotations
+using System.ComponentModel.DataAnnotations;
+
+[Required(ErrorMessage = "O Local deve ser inserido")]
+[MinLength(3, ErrorMessage = "O Local deve conter no mínimo 3 caracteres")]
+[MaxLength(80, ErrorMessage = "O Local deve conter no máximo 80 caracteres")]
+public string Local { get; set; }
+        
+[Required(ErrorMessage = "O Tema deve ser inserido")]
+[MinLength(3, ErrorMessage = "O Tema deve conter no mínimo 3 caracteres")]
+[MaxLength(80, ErrorMessage = "O Tema deve conter no máximo 80 caracteres")]
+[RegularExpression(@"^[ a-zA-Z á]*$", ErrorMessage = "O Tema deve conter apenas letras.")]
+public string Tema { get; set; }
+
+
+- Cria o projeto de Domain e apaga o Class1.cs
+dotnet new classlib -n ProAgil.Domain
+rm -r ProAgil.Domain/Class1.cs
+
+- Cria o projeto de Repository e apaga o Class1.cs
+dotnet new classlib -n ProAgil.Repository
+rm -r ProAgil.Repository/Class1.cs
+
+- Adiciona a referencia de Domains no Repository
+dotnet add ProAgil.Repository/ProAgil.Repository.csproj reference ProAgil.Domain/ProAgil.Domain.csproj
+dotnet add ProAgil.API/ProAgil.API.csproj reference ProAgil.Repository/ProAgil.Repository.csproj
+dotnet add ProAgil.API/ProAgil.API.csproj reference ProAgil.Domain/ProAgil.Domain.csproj
+
+- Adicionar os projetos na Solução
+dotnet sln add ProAgil.API/ProAgil.API.csproj ProAgil.Domain/ProAgil.Domain.csproj ProAgil.Repository/ProAgil.Repository.csproj
+
+
+- Criar migrations rodando de dentro do Repository para criar no projeto da API
+cd ProAgil.Repository
+dotnet ef --startup-project ../ProAgil.API migrations add init
+dotnet ef --startup-project ../ProAgil.API database update
+
+
+- Classe context do repository
+using Microsoft.EntityFrameworkCore;
+using ProAgil.Domain;
+
+namespace ProAgil.Repository
+{
+    public class ProAgilContext : DbContext
+    {
+        public ProAgilContext(DbContextOptions<ProAgilContext> options) : base (options)
+        {
+            
+        }
+        
+        public DbSet<Evento> Eventos { get; set; }
+        public DbSet<Palestrante> Palestrantes { get; set; }
+        public DbSet<PalestranteEvento> PalestranteEventos { get; set; }
+        public DbSet<Lote> Lotes { get; set; }
+        public DbSet<RedeSocial> RedeSociais { get; set; }
+
+	// Sobrescreve o método para especificar que temos uma tabela associativa PalestranteEvento
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<PalestranteEvento>()
+            .HasKey(PE => new {PE.EventoId, PE.PalestranteId});
+        }
+    }
+}
+
+
+- Fazer o join entre os Dominios usando Includes e ThenInclude
+Exemplo:
+
+public async Task<Palestrante> GetAllPalestrantesAsync(int PalestranteId, bool includeEventos = false)
+        {
+            IQueryable<Palestrante> query = _context.Palestrantes            
+            .Include(c => c.RedesSociais);
+
+            if (includeEventos)
+            {
+                query = query.Include(pe => pe.PalestrantesEventos)
+                             .ThenInclude(e => e.Evento);
+            }
+
+            query = query.OrderBy(c => c.Nome).Where(c => c.Id == PalestranteId);
+
+            return await query.FirstOrDefaultAsync();
+        }
+
+- No Startup.cs adicionar a linha abaixo para injetar o nosso repository ao invés de utilizar o contexto
+services.AddScoped<IProAgilRepository, ProAgilRepository>();
+
+- AsNoTracking - É usado para que o recurso não fique travado, pois as vezes no mesmo método é feito uma consulta e um update
+.AsNoTracking() 
+
+Específico dentro do método
+query = query.AsNoTracking().Where(c => c.Nome.ToLower().Contains(name.ToLower()));
+
+No contexto inteiro
+public ProAgilRepository(ProAgilContext context)
+{
+     _context = context;
+     _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+}
+
+
+DTO - Data Transfer Object
+Criar uma pasta Dtos e criar uma classe Dto para cada dominio, somente com as propriedades que queremos retornar
+Exemplo:
+public class EventoDto
+    {
+        public int Id { get; set; }
+        public string Local { get; set; }
+        public string  DataEvento { get; set; }
+        public string Tema { get; set; }
+        public int qtdPessoas { get; set; }
+        public string  ImagemURL { get; set; }
+        public string  Telefone { get; set; }
+        public string  Email { get; set; }
+        public List<LoteDto> Lotes { get; set; }
+        public List<RedeSocialDto> RedesSociais { get; set; }
+        public List<PalestranteDto> Palestrantes { get; set; }
+    }
+
+AutoMapper - Irá realizar o mapeamento entre os Dtos e os Dominios
+Instalar pelo Nugget o AutoMapper.Extensions.Microsoft.DependencyInjection
+Criar uma pasta no projeto da Api com o nome de Helpers
+Criar uma classe com o nome de AutoMapperProfiles (Ou qualquer outro nome)
+Fazer com que ela herde de Profile e realizar os mapeamentos:
+public class AutoMapperProfiles : Profile
+    {
+        public AutoMapperProfiles()
+        {
+            CreateMap<Evento, EventoDto>()
+                .ForMember(dest => dest.Palestrantes, opt => {
+                    opt.MapFrom(src => src.PalestrantesEventos.Select(x => x.Palestrante).ToList());
+                });
+
+            CreateMap<Palestrante, PalestranteDto>()
+                .ForMember(dest => dest.Eventos, opt => {
+                    opt.MapFrom(src => src.PalestrantesEventos.Select(x => x.Evento).ToList());
+                });
+
+            CreateMap<Lote, LoteDto>();
+            CreateMap<RedeSocial, RedeSocialDto>();
+        }
+    }
+
+*** a parte do ForMember é feita porque temos um relacionamento de muitos para muitos, neste caso, PalestrantesEventos. Então está sendo mapeado a lista de palestrantes para o EventoDto e também a lista de eventos para o ParticipanteDto.
+
+
+Adicionar o AutoMapper no Startup.cs
+services.AddAutoMapper(typeof(Startup)); ou services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+- Acrescentar o AutoMapper no controller
+Injetar no construtor
+ public IMapper _mapper { get; set; }
+ public EventoController(IProAgilRepository repo, IMapper mapper)
+ {
+   this._mapper = mapper;
+ }
+
+Mapear nos métodos get
+try
+{
+  var eventos = await _repo.GetAllEventoAsync(true);
+  var results = _mapper.Map<EventoDto[]>(eventos); //Como eventos é uma lista, é preciso converter para Array.
+  return Ok(results);
+}
+
+Mapear metodo post
+public async Task<IActionResult> Post(EventoDto eventoDto)
+        {
+            try
+            {
+                var evento = _mapper.Map<Evento>(eventoDto);
+                _repo.Add(evento);
+
+                if (await _repo.SaveChangesAsync())
+                {
+                    return Created($"/api/evento/{evento.Id}", evento);
+                }
+            }
+e na classe de AutoMapper deve se indicar que ele tb vai fazer um ReverseMap
+            CreateMap<Evento, EventoDto>()
+                .ForMember(dest => dest.Palestrantes, opt => {
+                    opt.MapFrom(src => src.PalestrantesEventos.Select(x => x.Palestrante).ToList());
+                }).ReverseMap(); //O ReverseMap é utilizado para um Mapeamento inverso para os casos de Post, pois vamos receber um DTO e inserir um Evento.
+
+
+
+- Upload de imagens
+
+Alterar no Startup.cs:
+            app.UseStaticFiles(new StaticFileOptions(){
+                FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Resources")),
+                RequestPath = new PathString("/Resources")
+            });
+
+Criar o método na controller:
+
+[HttpPost("upload")]
+        public IActionResult upload()
+        {
+            try
+            {
+                //Pega o arquivo enviado
+                var file = Request.Form.Files[0];
+                //Pega o diretório onde o arquivo será salvo
+                var folderName = Path.Combine("Resourse","Images");
+                //Concatena o diretório da aplicação (API) com a pasta onde o arquivo será salvo
+                var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
+
+                if (file.Length > 0)
+                {
+                    //Recuperar o FileName (nome do arquivo) que está sendo feito o upload
+                    var filename = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName;
+                    //Remove \ e espaços do nome completo do arquivo
+                    var fullPath = Path.Combine(pathToSave, filename.Replace("\"", " ").Trim());
+
+                    using(var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        //Salva o arquivo na pasta
+                        file.CopyTo(stream);
+                    }
+                }
+
+                return Ok();
+            }
+            catch (System.Exception ex)
+            {
+                return this.StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar Eventos: { ex.Message }");
+            }
+
+            // return BadRequest("Erro ao tentar realizar upload");
+        }
+
+
+- Documentação da API. Addicionar Swashbuckle.AspNetCore e Swashbuckle.AspNetCore.Swagger
+	Exemplo
+		public class Startup
+			{
+				public void ConfigureServices(IServiceCollection services)
+				{
+					services.AddMvc(option => option.EnableEndpointRouting = false);
+					services.AddResponseCompression(); //Adicionar copmressão para todas as requisiçõesx
+
+					services.AddScoped<StoreDataContext, StoreDataContext>();
+					services.AddTransient<ProductRepository, ProductRepository>();
+
+					services.AddSwaggerGen(x =>
+					{
+						x.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title="Catalog Product", Version = "v1" });
+					});
+				}
+
+				public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+				{
+					if (env.IsDevelopment())
+					{
+						app.UseDeveloperExceptionPage();
+					}
+
+					app.UseMvc();
+					app.UseResponseCompression(); //Adicionar copmressão para todas as requisições
+
+					app.UseSwagger();
+					app.UseSwaggerUI(c =>
+					{
+						c.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Catalog - v1");
+					});
+				}
+			}
+
+
+- AspNet Core Identity
+
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+
+Alterar o Contexto para que ele herde de IdentityDbContext:
+public class ProAgilContext : IdentityDbContext
+
+Nas classes User, Role e UserRole que herdam de IdentityUser por exemplo, deve se especificar no momento de herdar que o Id vai ser int:
+public class User : IdentityUser<int>
+
+
+----------------------------------------------------------------------------------------------------------
+--ANGULAR ------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+
+Site: angular.io
+npm install -g @angular/cli    Instala a última versão do Angular
+
+Site cli Angular: cli.angular.io
+
+ng new ProAgil-App    Criar um projeto
+
+cd ProAgil-App		Entrar no projeto Angular
+ng serve -o			Compila e já abre no browser o projeto Angular	
+
+- Extensões VSCode importantes para trabalhar com Angular
+Angular Files
+Angular Language Service
+angular2-switcher
+Auto Rename tag
+Bracket Pair Colorizer
+C# Extensions
+Debugger for Chrome
+Material Icon Theme
+NPM
+NuGet Package Manager
+Path Intellisense
+Prettier Code Formatter
+TSLint
+
+Framework de css para utilizar no projeto Angular:
+https://fontawesome.com/start
+
+Instalar o Bootstrap e fontawesome:
+npm i --save bootstrap @fortawesome/fontawesome-free
+
+
+Adicionar na API uma permissão de acesso na classe Startup 
+No método ConfigureServices
+services.AddCors();
+e no método Configure
+ app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+- Disponibilizar pela API imagens que estão no servidor:
+No método Configure da classe StartUp colocar essa chamada:
+app.UseStaticFiles();
+
+
+Método para se comunicar com a API retornando uma lista de Eventos:
+  getEventos()
+  {
+    this.eventos = this.http.get('http://localhost:5000/Evento').subscribe(response => {
+      this.eventos = response;
+    }, error => {
+      console.log(error);
+    }
+    );
+  }
+
+
+- Pipe nos dados.
+O pipe te dá a opção de vários filtros nos dados, este por exemplo coloca todo o texto em maiúsculo.
+<td>{{evento.lote | uppercase}}</td>
+
+- Two-Way data binding 
+[(ngModel)]="filtroLista"
+transferir o que está sendo digitado em um input para outro componente
+
+ no HTML
+<input type="text"
+      class="form-control mr-2"
+      placeholder="buscar"
+      [(ngModel)]="filtroLista" >
+
+<h6>Filtro: {{filtroLista}}</h6>
+
+no ts
+filtroLista = '';
+
+- Eventos
+ no HTML
+<button class="btn btn-outline-primary"
+        (click)="alternarImagem()" >
+          Mostrar Imagem
+        </button>
+
+no ts
+  alternarImagem(): void
+  {
+    this.mostrarImagem = !this.mostrarImagem;
+  }
+
+- Instalar o ngx-toastr
+npm install ngx-toastr --save
+
+Adicionar as duas referencias abaixo no App Modules
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ToastrModule } from 'ngx-toastr';
+
+Adicionar o Guardião (Serve para não permitir o acesso das rotas quando não está logado.
+ng g g auth/auth
+
+Após a instalação criar um contrutor para a classe injetando o Router:
+constructor(private router: Router) {}
+
+E alterar o método canActivate como abaixo:
+  canActivate(next: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+    if (localStorage.getItem('token') !== null) {
+      return true;
+    } else {
+      this.router.navigate(['/user/login']);
+      return false;
+    }
+  }
+
+Instalar o ngx-currency para tratar campos de dinheiro
+npm i ngx-currency
+
+Instalar o BootSwatch
+npm i bootswatch
+Após, importar no css do projeto 
+@import '../node_modules/bootswatch/dist/lumen/bootstrap.min.css';
+
+Adicionar o Snippet na tela de Dashboard
+https://bootsnipp.com/
+Ache o Snippet desejado e copie o HTML e cole no html do dashboard
+Depois copie o css do snippet e cole no css do Dashboard
+
+
+Deply do Angular
+Instalar o source-map-explorer para que ele faça o deploy e altere automaticamente o nome dos arquivos para que o Browse recarregue com os novos arquivos:
+npm install source-map-explorer --save-dev
+
+Comando para buildar a aplicação:
+ng build --prod --source-map
+Vai ser criado na aplicação um diretório /dist
+
+Para testar a publicação:
+cd dist           	  para entrar na pasta dist
+cd ProAgil-App    	  para entrar na pasta compilada do projeto
+ng serve --port 4201 -o	  para rodar a aplicação
+
+
+Publicar a API
+dotnet publish -c Release -o dist
+Após, criar uma pasta Resources dentro do dist. Isso porque a aplicação utiliza uma pasta Resource para armazenar as imagens.
+
+Para testar:
+Acesse via terminal (CMD ou PowerShell) a pasta dist:
+cd dist
+Depois digite o comando:
+dotnet ProAgil.API.dll
+
+Depois copie o banco SqLite para a pasta dist
