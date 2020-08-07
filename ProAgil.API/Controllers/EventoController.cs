@@ -149,18 +149,33 @@ namespace ProAgil.API.Controllers
             try
             {
                 var evento = await _repo.GetEventoAsyncById(EventoId, false);
+                if (evento == null) return NotFound();
 
-                if (evento == null)
-                    return NotFound();
+                var idLotes = new List<int>();
+                var idRedesSociais = new List<int>();
 
-                _mapper.Map(eventoDto, evento); //Atualiza o evento com o Mapper para atualização no banco.   
+                eventoDto.Lotes.ForEach(item => idLotes.Add(item.Id));
+                eventoDto.RedesSociais.ForEach(item => idRedesSociais.Add(item.Id));
+
+                var lotes = evento.Lotes.Where(
+                    lote => !idLotes.Contains(lote.Id)
+                ).ToArray();
+
+                var redesSociais = evento.RedesSociais.Where(
+                    rede => !idLotes.Contains(rede.Id)
+                ).ToArray();
+
+                if (lotes.Length > 0) _repo.DeleteRange(lotes);
+                if (redesSociais.Length > 0) _repo.DeleteRange(redesSociais);
+
+                _mapper.Map(eventoDto, evento); //Atualiza o evento com o Mapper para atualização no banco. 
 
                 _repo.Update(evento);
 
                 if (await _repo.SaveChangesAsync())
                 {
-                    return Created($"/api/evento/{evento.Id}", _mapper.Map<EventoDto>(evento));
-                }
+                    return Created($"/api/evento/{eventoDto.Id}", _mapper.Map<EventoDto>(evento));
+                }            
             }
             catch (System.Exception ex)
             {
