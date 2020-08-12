@@ -407,6 +407,23 @@ Nas classes User, Role e UserRole que herdam de IdentityUser por exemplo, deve s
 public class User : IdentityUser<int>
 
 
+- Utilizar o SQL Server----------
+
+Alterar no config a string de conexão:
+"ConnectionStringSQLServer": {"DefaultConnection": "Server=(localdb)\\MSSQLLocalDB; Database=ProAgil;Id=usuariobanco; Password=senhabanco;"},
+
+Instalar o pacote do SqlServer no Repositório e no API
+<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="3.1.5"/>
+
+Alterar o Startup.cs para utilizar o SqlServer:
+services.AddDbContext<ProAgilContext>(x => x.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));            
+
+Entrar no Repositório e executar os migrations:
+cd ProAgil.Repository
+dotnet ef --startup-project ../ProAgil.API migrations add init
+dotnet ef --startup-project ../ProAgil.API database update
+
+
 ----------------------------------------------------------------------------------------------------------
 --ANGULAR ------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
